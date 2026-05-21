@@ -9,6 +9,7 @@ const WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbwTEptp9ZbLUlsbsE-vH
 // ── State ──
 let entriesOffset = 0;
 let generateLocked = false;
+let redeemLocked = false;
 let ledgerStatusFilter = 'all';
 
 // ── Theme Management ──
@@ -516,11 +517,19 @@ async function searchGiftCard() {
       if (isRedeemed) {
         document.getElementById('btnRedeem').style.display = 'none';
       } else {
-        document.getElementById('btnRedeem').style.display = '';
-        document.getElementById('btnRedeem').setAttribute('data-code', d.code);
-        document.getElementById('btnRedeem').setAttribute('data-mobile', d.mobile);
-        document.getElementById('btnRedeem').setAttribute('data-amount', d.amount);
-        document.getElementById('btnRedeem').setAttribute('data-message', d.message);
+        const btnRedeem = document.getElementById('btnRedeem');
+        btnRedeem.style.display = '';
+        btnRedeem.setAttribute('data-code', d.code);
+        btnRedeem.setAttribute('data-mobile', d.mobile);
+        btnRedeem.setAttribute('data-amount', d.amount);
+        btnRedeem.setAttribute('data-message', d.message);
+        if (redeemLocked) {
+          btnRedeem.disabled = true;
+          btnRedeem.innerHTML = '<span class="spinner"></span> Syncing to database…';
+        } else {
+          btnRedeem.disabled = false;
+          btnRedeem.innerHTML = '✅ Redeem Card';
+        }
       }
 
       document.getElementById('searchResult').classList.add('show');
@@ -548,54 +557,106 @@ function closeRedeemModal() {
 //  REDEEM GIFT CARD
 // ══════════════════════════════════════════════
 async function redeemGiftCard() {
+  if (redeemLocked) return;
+
   const btn = document.getElementById('btnRedeem');
   const code = btn.getAttribute('data-code') || document.getElementById('searchCode').value.trim().toUpperCase();
 
+  redeemLocked = true;
   btn.disabled = true;
   btn.innerHTML = '<span class="spinner"></span> Redeeming…';
 
-  try {
-    const resp = await apiCall({ action: 'redeem', code });
-    if (resp.success) {
-      const cachedStr = localStorage.getItem('gsheet_cache_data');
-      if (cachedStr) {
-        try {
-          const cachedData = JSON.parse(cachedStr);
-          const item = cachedData.find(i => i.code === code);
-          if (item) {
-            item.redeemStatus = 0;
-            localStorage.setItem('gsheet_cache_data', JSON.stringify(cachedData));
-          }
-        } catch(e) {}
+  let apiFinished = false;
+  let apiSuccess = false;
+  let apiError = null;
+
+  // 1. Trigger background database redeem asynchronously (non-blocking)
+  apiCall({ action: 'redeem', code })
+    .then(resp => {
+      apiFinished = true;
+      if (resp.success) {
+        apiSuccess = true;
+        // Update local cache asynchronously
+        const cachedStr = localStorage.getItem('gsheet_cache_data');
+        if (cachedStr) {
+          try {
+            const cachedData = JSON.parse(cachedStr);
+            const item = cachedData.find(i => i.code === code);
+            if (item) {
+              item.redeemStatus = 0;
+              item.redeemDate = new Date().toLocaleDateString('en-GB'); // DD/MM/YYYY
+              localStorage.setItem('gsheet_cache_data', JSON.stringify(cachedData));
+            }
+          } catch(e) {}
+        }
+        showToast('Redemption saved to database!', 'success');
+        
+        // Sync complete: Re-enable the Redeem button
+        redeemLocked = false;
+        btn.disabled = false;
+        btn.innerHTML = '✅ Redeem Card';
+      } else {
+        apiSuccess = false;
+        apiError = resp.error || 'Redeem failed';
+        handleRedeemFailure(apiError);
       }
-      showToast('Gift card redeemed successfully!', 'success');
-      const statusEl = document.getElementById('resStatus');
-      statusEl.textContent = 'Redeemed';
-      statusEl.className = 'status-badge redeemed';
-      document.getElementById('resBalanceLabel').textContent = 'Redeemed';
-      document.getElementById('resDateLabel').textContent = 'Redeemed On';
-      document.getElementById('resDateDisplay').textContent = formatCardDate(new Date().toISOString());
-      btn.style.display = 'none';
+    })
+    .catch(err => {
+      apiFinished = true;
+      apiSuccess = false;
+      apiError = 'Network error. Check connection.';
+      handleRedeemFailure(apiError);
+    });
 
-      // Open Modal and populate links
-      const mobile = btn.getAttribute('data-mobile');
-      const amount = btn.getAttribute('data-amount');
-      const message = btn.getAttribute('data-message');
-
-      document.getElementById('modalWhatsapp').href = buildWhatsappRedeem(mobile, code, amount, message);
-      document.getElementById('modalTelegram').href = buildTelegramRedeem(mobile, code, amount, message);
-      document.getElementById('modalSms').href = buildSmsRedeem(mobile, code, amount, message);
-      
-      document.getElementById('redeemModal').classList.add('show');
-    } else {
-      showToast(resp.error || 'Redeem failed', 'error');
+  // 2. Open Success Popup after intentional 0.5 second UI delay
+  setTimeout(() => {
+    // If redeeming failed immediately during the 0.5-second delay, don't show the modal
+    if (apiFinished && !apiSuccess) {
+      return;
     }
-  } catch (err) {
-    showToast('Network error', 'error');
-  }
 
-  btn.disabled = false;
-  btn.innerHTML = '✅ Redeem Card';
+    showToast('Gift card redeemed successfully!', 'success');
+    const statusEl = document.getElementById('resStatus');
+    statusEl.textContent = 'Redeemed';
+    statusEl.className = 'status-badge redeemed';
+    document.getElementById('resBalanceLabel').textContent = 'Redeemed';
+    document.getElementById('resDateLabel').textContent = 'Redeemed On';
+    document.getElementById('resDateDisplay').textContent = formatCardDate(new Date().toISOString());
+    btn.style.display = 'none';
+
+    // Open Modal and populate links
+    const mobile = btn.getAttribute('data-mobile');
+    const amount = btn.getAttribute('data-amount');
+    const message = btn.getAttribute('data-message');
+
+    document.getElementById('modalWhatsapp').href = buildWhatsappRedeem(mobile, code, amount, message);
+    document.getElementById('modalTelegram').href = buildTelegramRedeem(mobile, code, amount, message);
+    document.getElementById('modalSms').href = buildSmsRedeem(mobile, code, amount, message);
+    
+    document.getElementById('redeemModal').classList.add('show');
+  }, 500);
+
+  function handleRedeemFailure(errorMsg) {
+    showToast(errorMsg, 'error');
+    // Hide modal if shown
+    document.getElementById('redeemModal').classList.remove('show');
+    // Unlock button to allow user to retry
+    redeemLocked = false;
+    btn.disabled = false;
+    btn.innerHTML = '✅ Redeem Card';
+
+    // If the user is still viewing the same card, restore active state in the UI
+    if (document.getElementById('resCodeDisplay').textContent === code) {
+      const statusEl = document.getElementById('resStatus');
+      statusEl.textContent = 'Active ✓';
+      statusEl.className = 'status-badge active';
+      document.getElementById('resBalanceLabel').textContent = 'Balance';
+      document.getElementById('resDateLabel').textContent = 'Issued';
+      const decoded = decodeGiftCard(code);
+      document.getElementById('resDateDisplay').textContent = decoded ? formatCardDate(decoded.date) : '—';
+      btn.style.display = '';
+    }
+  }
 }
 
 // Helper to format date string to "17 May 2025" style
