@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="description" content="Krishna Book Store – Premium Gift Card Management System." />
+  <title>Krishna Book Store – Gift Cards</title>
+  <link rel="icon" type="image/png" href="logo.png" />
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@500;600;700;800&family=Syne:wght@700;800&family=DM+Sans:ital,wght@0,400;0,500;1,400&family=DM+Mono:wght@500&display=swap"
+    rel="stylesheet">
+
+  <!-- Icons -->
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+</head>
+
+<body class="light-mode">
+
+  <!-- Floating Background Elements for Glassmorphism -->
+  <div class="bg-shape bg-shape-1"></div>
+  <div class="bg-shape bg-shape-2"></div>
+  <div class="bg-shape bg-shape-3"></div>
+
+  <!-- ── Top Navbar ── -->
+  <nav class="navbar glass-panel">
+    <div class="navbar-inner">
+      <a href="#" class="navbar-brand" onclick="navigate('home')">
+        <div class="brand-logo-wrap">
+          <img src="logo.png" alt="Logo" class="brand-logo"
+            onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />
+          <div class="brand-logo-fallback" style="display:none;"><span class="material-icons-round">local_library</span>
+          </div>
+        </div>
+        <span class="brand-text">Krishna Book Store</span>
+      </a>
+      <div class="navbar-links">
+        <button class="nav-btn active" id="nav-home" onclick="navigate('home')">
+          <span class="material-icons-round">home</span> Home
+        </button>
+        <button class="nav-btn" id="nav-entries" onclick="navigate('entries')">
+          <span class="material-icons-round">receipt_long</span> Entries
+        </button>
+        <button class="nav-btn" id="nav-admin" onclick="navigate('admin')">
+          <span class="material-icons-round">space_dashboard</span> Admin
+        </button>
+
+        <div class="cache-btns" id="cache-btns">
+          <button class="circle-btn btn-theme" id="btn-toggle-theme" onclick="toggleTheme()" title="Toggle Theme">
+            <span class="material-icons-round" id="theme-icon">dark_mode</span>
+          </button>
+          <button class="circle-btn btn-sync" id="btn-sync-cache" onclick="syncCache()" title="Sync Cache">
+            <span class="material-icons-round">sync</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ── Main Content ── -->
+  <main class="main-container">
+
+    <!-- ═══════ HOME PAGE ═══════ -->
+    <section class="section active" id="section-home">
+      <div class="home-grid">
+        <!-- Generate Card -->
+        <div class="card glass-panel" id="card-generate">
+          <div class="card-header">
+            <div class="icon-wrap icon-primary"><span class="material-icons-round">card_giftcard</span></div>
+            <div class="header-text">
+              <h2>Issue Gift Card</h2>
+              <p>Create and distribute a new card</p>
+            </div>
+          </div>
+
+          <div class="form-grid">
+            <div class="input-group">
+              <label for="genMobile">Customer Mobile</label>
+              <div class="input-wrapper">
+                <span class="material-icons-round input-icon">phone</span>
+                <input type="tel" id="genMobile" placeholder="10-digit mobile number" maxlength="10"
+                  autocomplete="off" inputmode="numeric" />
+              </div>
+            </div>
+            <div class="input-group">
+              <label for="genAmount">Amount (₹)</label>
+              <div class="input-wrapper">
+                <span class="material-icons-round input-icon">currency_rupee</span>
+                <input type="text" id="genAmount" placeholder="Enter amount" autocomplete="off" inputmode="numeric" />
+              </div>
+            </div>
+            <div class="input-group">
+              <label>Issue Date</label>
+              <div class="display-field" id="genDate">--/--/----</div>
+            </div>
+            <div class="input-group">
+              <label>Issue Time</label>
+              <div class="display-field" id="genTime">--:--:--</div>
+            </div>
+            <div class="input-group full-width">
+              <label for="genMessage">Custom Message</label>
+              <div class="input-wrapper">
+                <span class="material-icons-round input-icon">chat_bubble_outline</span>
+                <input type="text" id="genMessage" value="Thank You, Visit Again" autocomplete="off" />
+              </div>
+            </div>
+          </div>
+
+          <button class="btn btn-primary btn-large btn-glow" id="btnGenerate" onclick="generateGiftCard()">
+            Generate Code
+          </button>
+        </div>
+
+        <!-- Search & Redeem Card -->
+        <div class="search-redeem-wrapper">
+          <div class="card glass-panel" id="card-search">
+            <div class="card-header">
+              <div class="icon-wrap icon-secondary"><span class="material-icons-round">search</span></div>
+              <div class="header-text">
+                <h2>Lookup & Redeem</h2>
+                <p>Verify or redeem existing cards</p>
+              </div>
+            </div>
+
+            <div class="input-group full-width">
+              <label for="searchCode">Gift Card Code</label>
+              <div class="search-input-wrap">
+                <input type="text" id="searchCode" value="GIFT-" placeholder="GIFT-XXXXXXXX" maxlength="13"
+                  autocomplete="off" />
+                <button class="btn btn-secondary btn-search" id="btnSearch" onclick="searchGiftCard()">
+                  <span class="material-icons-round">arrow_forward</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Search Result Reveal -->
+            <div class="search-result" id="searchResult">
+              <div class="result-header">
+                <h3>Card Details</h3>
+                <button class="btn-icon-only" onclick="resetSearch()" title="Close">
+                  <span class="material-icons-round">close</span>
+                </button>
+              </div>
+
+              <!-- Visual Gift Card Component -->
+              <div class="gift-card-demo" style="margin: 0 auto 24px;">
+                <div class="gift-card-header">
+                  <div>
+                    <div class="brand-title">Krishna Book Store</div>
+                    <div class="card-type">Gift Card</div>
+                  </div>
+                  <div class="status-badge active" id="resStatus">Active ✓</div>
+                </div>
+                
+                <div class="gift-card-code-wrap">
+                  <div class="gift-card-code" id="resCodeDisplay">GIFT-XXXXX</div>
+                  <button class="btn-icon-only copy-btn" onclick="copyToClipboard('resCodeDisplay')" title="Copy Code">
+                    <span class="material-icons-round">content_copy</span>
+                  </button>
+                </div>
+                
+                <div class="gift-card-meta-ribbon">
+                  <div class="gift-card-msg" id="resMsgDisplay">"Thank You, Visit Again"</div>
+                  <div class="gift-card-phone" id="resPhoneDisplay">+91 XXXXX XXXXX</div>
+                </div>
+                
+                <div class="gift-card-footer">
+                  <div>
+                    <div class="gift-card-label" id="resBalanceLabel">Balance</div>
+                    <div class="gift-card-amount" id="resAmountDisplay">₹0</div>
+                  </div>
+                  <div>
+                    <div class="gift-card-label" id="resDateLabel">Issued</div>
+                    <div class="gift-card-date" id="resDateDisplay">--/--/----</div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="redeem-actions" id="redeemActions">
+                <button class="btn btn-success btn-large btn-glow-success full-width" id="btnRedeem"
+                  onclick="redeemGiftCard()">
+                  <span class="material-icons-round">verified</span> Redeem Now
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════ ALL ENTRIES PAGE ═══════ -->
+    <section class="section" id="section-entries">
+      <div class="card glass-panel entries-card">
+        <div class="ledger-controls">
+          <div class="ledger-search-box">
+            <div class="input-wrapper">
+              <span class="material-icons-round input-icon">search</span>
+              <input type="text" id="ledgerSearchInput" placeholder="Search code, mobile, amount..." oninput="handleLedgerFilters()" autocomplete="off">
+            </div>
+          </div>
+          
+          <div class="ledger-actions-group">
+            <div class="segmented-control">
+              <button class="seg-btn active" id="filterStatusAll" onclick="setLedgerStatusFilter('all')">All</button>
+              <button class="seg-btn" id="filterStatusActive" onclick="setLedgerStatusFilter('active')">Active</button>
+              <button class="seg-btn" id="filterStatusRedeemed" onclick="setLedgerStatusFilter('redeemed')">Redeemed</button>
+            </div>
+            
+            <div class="sort-select-wrapper">
+              <span class="material-icons-round sort-icon">sort</span>
+              <select id="ledgerSortSelect" onchange="handleLedgerFilters()">
+                <option value="date_newest" selected>Newest First</option>
+                <option value="date_oldest">Oldest First</option>
+                <option value="amount_highest">Highest Amount</option>
+                <option value="amount_lowest">Lowest Amount</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="entries-grid-container">
+          <div class="entries-grid" id="entriesList">
+            <!-- Dynamically populated with visual gift cards -->
+          </div>
+          <div class="load-more-wrap" id="loadMoreWrap" style="display:none;">
+            <button class="btn btn-outline btn-large" id="btnLoadMore" onclick="loadMoreEntries()">Load More</button>
+          </div>
+          <div class="empty-state" id="entriesEmpty" style="display:none;">
+            <div class="empty-icon-wrap"><span class="material-icons-round">inbox</span></div>
+            <p>No records found</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════ ADMIN PANEL ═══════ -->
+    <section class="section" id="section-admin">
+      <div class="admin-header">
+        <div class="header-left">
+          <h2>Dashboard</h2>
+          <p>Analytics and financial metrics from cached data</p>
+        </div>
+      </div>
+
+      <!-- Key Metrics -->
+      <div class="stats-grid" id="statsGrid">
+        <div class="stat-card glass-panel stat-accent-1">
+          <span class="material-icons-round stat-icon">people</span>
+          <div class="stat-info">
+            <span class="stat-label">Total Customers</span>
+            <span class="stat-value" id="statCustomers">—</span>
+          </div>
+        </div>
+        <div class="stat-card glass-panel stat-accent-2">
+          <span class="material-icons-round stat-icon">account_balance_wallet</span>
+          <div class="stat-info">
+            <span class="stat-label">Total Issued</span>
+            <span class="stat-value" id="statTotalAmount">—</span>
+          </div>
+        </div>
+        <div class="stat-card glass-panel stat-accent-3">
+          <span class="material-icons-round stat-icon">today</span>
+          <div class="stat-info">
+            <span class="stat-label">Today's Entries</span>
+            <span class="stat-value" id="statTodayEntries">—</span>
+          </div>
+        </div>
+        <div class="stat-card glass-panel stat-accent-4">
+          <span class="material-icons-round stat-icon">payments</span>
+          <div class="stat-info">
+            <span class="stat-label">Today's Amount</span>
+            <span class="stat-value" id="statTodayAmount">—</span>
+          </div>
+        </div>
+        <div class="stat-card glass-panel stat-accent-1">
+          <span class="material-icons-round stat-icon">receipt</span>
+          <div class="stat-info">
+            <span class="stat-label">Avg Billing</span>
+            <span class="stat-value" id="statAvgBilling">—</span>
+          </div>
+        </div>
+        <div class="stat-card glass-panel stat-accent-success">
+          <span class="material-icons-round stat-icon">task_alt</span>
+          <div class="stat-info">
+            <span class="stat-label">Total Claimed</span>
+            <span class="stat-value" id="statClaimed">—</span>
+          </div>
+        </div>
+        <div class="stat-card glass-panel stat-accent-danger">
+          <span class="material-icons-round stat-icon">pending_actions</span>
+          <div class="stat-info">
+            <span class="stat-label">Profit</span>
+            <span class="stat-value" id="statRemaining">—</span>
+          </div>
+        </div>
+        <div class="stat-card glass-panel stat-accent-2">
+          <span class="material-icons-round stat-icon">trending_up</span>
+          <div class="stat-info">
+            <span class="stat-label">Conversion Rate</span>
+            <span class="stat-value" id="statConversion">—</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Advanced Analytics Grid -->
+      <div class="analytics-grid">
+        <div class="chart-card glass-panel span-full">
+          <div class="chart-header">
+            <h3>Activity Heatmap</h3>
+            <div class="segmented-control">
+              <button class="seg-btn active" id="btnToggleIssued" onclick="toggleHeatmap('issued')">Issued</button>
+              <button class="seg-btn" id="btnToggleRedeemed" onclick="toggleHeatmap('redeemed')">Redeemed</button>
+            </div>
+          </div>
+          <div class="chart-body" id="heatmapChart"></div>
+        </div>
+
+        <div class="chart-card glass-panel">
+          <div class="chart-header">
+            <h3>Return Behavior</h3>
+          </div>
+          <div class="chart-body" id="returnChart"></div>
+        </div>
+
+        <div class="chart-card glass-panel">
+          <div class="chart-header">
+            <h3>Customer Segments</h3>
+          </div>
+          <div class="chart-body" id="segmentChart"></div>
+        </div>
+
+        <div class="chart-card glass-panel span-full loyalists-panel">
+          <div class="chart-header">
+            <h3>Top 10 Loyalists</h3>
+          </div>
+          <div class="loyalists-list" id="loyalistsList">
+            <div class="empty-state">
+              <div class="empty-icon-wrap"><span class="material-icons-round">emoji_events</span></div>
+              <p>Click Refresh Data to load loyalists</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- ── Bottom Mobile Navigation ── -->
+  <div class="bottom-nav glass-panel">
+    <div class="bnav-inner">
+      <div class="bnav-indicator"></div>
+      <button class="bnav-btn active" id="bnav-home" onclick="navigate('home')" data-index="0">
+        <span class="material-icons-round">home</span>
+        <span class="bnav-text">Home</span>
+      </button>
+      <button class="bnav-btn" id="bnav-entries" onclick="navigate('entries')" data-index="1">
+        <span class="material-icons-round">receipt_long</span>
+        <span class="bnav-text">Entries</span>
+      </button>
+      <button class="bnav-btn" id="bnav-admin" onclick="navigate('admin')" data-index="2">
+        <span class="material-icons-round">space_dashboard</span>
+        <span class="bnav-text">Admin</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- ── Modals ── -->
+  <!-- Generate Success Modal -->
+  <div class="modal-overlay" id="generateModal">
+    <div class="modal-card glass-panel" style="max-width: 480px; padding: 32px 24px;">
+      <button class="btn-icon-only modal-close" onclick="closeGenerateModal()">
+        <span class="material-icons-round">close</span>
+      </button>
+      <h2 style="font-size: 1.6rem; margin-bottom: 4px;">Card Generated!</h2>
+      <p style="margin-bottom: 20px; font-size: 0.95rem;">Share this gift card with the customer securely.</p>
+
+      <!-- Visual Gift Card Component -->
+      <div class="gift-card-demo" style="margin: 0 auto 24px;">
+        <div class="gift-card-header">
+          <div>
+            <div class="brand-title">Krishna Book Store</div>
+            <div class="card-type">Gift Card</div>
+          </div>
+          <div class="status-badge active" id="modalCardStatus">Active ✓</div>
+        </div>
+        
+        <div class="gift-card-code-wrap">
+          <div class="gift-card-code" id="modalGenCodeDisplay">GIFT-XXXXX</div>
+          <button class="btn-icon-only copy-btn" onclick="copyToClipboard('modalGenCodeDisplay')" title="Copy Code">
+            <span class="material-icons-round">content_copy</span>
+          </button>
+        </div>
+        
+        <div class="gift-card-meta-ribbon">
+          <div class="gift-card-msg" id="modalGenMsgDisplay">"Thank You, Visit Again"</div>
+          <div class="gift-card-phone" id="modalGenPhoneDisplay">+91 XXXXX XXXXX</div>
+        </div>
+        
+        <div class="gift-card-footer">
+          <div>
+            <div class="gift-card-label">Balance</div>
+            <div class="gift-card-amount" id="modalGenAmountDisplay">₹0</div>
+          </div>
+          <div>
+            <div class="gift-card-label">Issued</div>
+            <div class="gift-card-date" id="modalGenDateDisplay">--/--/----</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="share-actions">
+        <button class="btn-share print" onclick="printGeneratedCard()">
+          <span class="material-icons-round">print</span>
+          Print
+        </button>
+        <a class="btn-share wa" id="modalGenWhatsapp" href="#" target="_blank">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+            <path
+              d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.582 2.128 2.182-.573c.978.58 1.911.928 3.145.929 3.178 0 5.767-2.587 5.768-5.766.001-3.187-2.575-5.77-5.764-5.771zm3.392 8.244c-.144.405-.837.774-1.17.824-.299.045-.677.063-1.092-.069-.252-.08-.575-.187-.988-.365-1.739-.751-2.874-2.502-2.961-2.617-.087-.116-.708-.94-.708-1.793s.448-1.273.607-1.446c.159-.173.346-.217.462-.217l.332.006c.106.005.249-.04.39.298.144.347.491 1.2.534 1.287.043.087.072.188.014.304-.058.116-.087.188-.173.289l-.26.304c-.087.086-.177.18-.076.354.101.174.449.741.964 1.201.662.591 1.221.774 1.394.86s.274.072.376-.043c.101-.116.433-.506.549-.68.116-.173.231-.145.39-.087s1.011.477 1.184.564.289.13.332.202c.045.072.045.419-.099.824zm-3.423-14.416c-6.627 0-12 5.373-12 12s5.373 12 12 12 12-5.373 12-12-5.373-12-12-12zm.029 18.88c-1.161 0-2.305-.292-3.318-.844l-3.677.964.984-3.595c-.607-1.052-.927-2.246-.926-3.468.001-3.825 3.113-6.937 6.937-6.937 3.825 0 6.938 3.112 6.938 6.937s-3.113 6.938-6.938 6.938z" />
+          </svg>
+          WhatsApp
+        </a>
+        <a class="btn-share tg" id="modalGenTelegram" href="#" target="_blank">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+            <path
+              d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69.01-.03.01-.14-.07-.19-.08-.05-.19-.02-.27 0-.12.03-1.98 1.25-5.59 3.69-.53.36-1.01.53-1.44.52-.47-.01-1.38-.27-2.05-.49-.83-.27-1.49-.41-1.43-.87.03-.24.36-.48.99-.74 3.88-1.69 6.47-2.81 7.76-3.34 3.69-1.53 4.46-1.8 4.96-1.81.11 0 .36.03.49.14.11.09.14.22.15.34-.01.07-.01.18-.03.26z" />
+          </svg>
+          Telegram
+        </a>
+        <a class="btn-share sms" id="modalGenSms" href="#" target="_blank">
+          <span class="material-icons-round">sms</span>
+          SMS
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Redeem Success Modal -->
+  <div class="modal-overlay" id="redeemModal">
+    <div class="modal-card glass-panel">
+      <button class="btn-icon-only modal-close" onclick="closeRedeemModal()">
+        <span class="material-icons-round">close</span>
+      </button>
+      <div class="modal-illustration icon-success">
+        <span class="material-icons-round">check_circle</span>
+      </div>
+      <h2>Card Redeemed!</h2>
+      <p>The gift card has been successfully applied to the purchase.</p>
+
+      <div class="share-actions" style="margin-top: 24px;">
+        <a class="btn-share wa" id="modalWhatsapp" href="#" target="_blank">WhatsApp Receipt</a>
+        <a class="btn-share tg" id="modalTelegram" href="#" target="_blank">Telegram Receipt</a>
+        <a class="btn-share sms" id="modalSms" href="#" target="_blank">SMS Receipt</a>
+      </div>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+  <script>
+    function copyToClipboard(elementId) {
+      const text = document.getElementById(elementId).innerText;
+      copyText(text);
+    }
+    function copyText(text) {
+      navigator.clipboard.writeText(text).then(() => {
+        if (typeof showToast === 'function') {
+          showToast('Code copied!', 'success');
+        }
+      });
+    }
+  </script>
+</body>
+
+</html>
