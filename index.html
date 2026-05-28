@@ -20,6 +20,7 @@
 
   <link rel="stylesheet" href="style.css" />
   <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 </head>
 
 <body class="light-mode">
@@ -39,7 +40,8 @@
           <div class="brand-logo-fallback" style="display:none;"><span class="material-icons-round">local_library</span>
           </div>
         </div>
-        <span class="brand-text">Krishna Book Store</span>
+
+        <span class="brand-text">Krishna Book Center</span>
       </a>
       <div class="navbar-links">
         <button class="nav-btn active" id="nav-home" onclick="navigate('home')">
@@ -132,7 +134,7 @@
             <div class="input-group full-width">
               <label for="searchCode">Gift Card Code</label>
               <div class="search-input-wrap">
-                <input type="text" id="searchCode" value="GIFT-" placeholder="GIFT-XXXXXXXX" maxlength="13"
+                <input type="text" id="searchCode" value="KBC-" placeholder="KBC-XXXXXXXX" maxlength="12"
                   autocomplete="off" />
                 <button class="btn btn-secondary btn-search" id="btnSearch" onclick="searchGiftCard()">
                   <span class="material-icons-round">arrow_forward</span>
@@ -160,7 +162,7 @@
                 </div>
                 
                 <div class="gift-card-code-wrap">
-                  <div class="gift-card-code" id="resCodeDisplay">GIFT-XXXXX</div>
+                  <div class="gift-card-code" id="resCodeDisplay">KBC-XXXXX</div>
                   <button class="btn-icon-only copy-btn" onclick="copyToClipboard('resCodeDisplay')" title="Copy Code">
                     <span class="material-icons-round">content_copy</span>
                   </button>
@@ -222,6 +224,10 @@
                 <option value="amount_lowest">Lowest Amount</option>
               </select>
             </div>
+
+            <button class="btn download-btn" id="btnDownloadLedger" onclick="downloadLedger()" title="Download Excel">
+              <span class="material-icons-round">download</span> Download
+            </button>
           </div>
         </div>
 
@@ -391,7 +397,7 @@
         </div>
         
         <div class="gift-card-code-wrap">
-          <div class="gift-card-code" id="modalGenCodeDisplay">GIFT-XXXXX</div>
+          <div class="gift-card-code" id="modalGenCodeDisplay">KBC-XXXXX</div>
           <button class="btn-icon-only copy-btn" onclick="copyToClipboard('modalGenCodeDisplay')" title="Copy Code">
             <span class="material-icons-round">content_copy</span>
           </button>
