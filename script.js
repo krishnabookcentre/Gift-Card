@@ -185,15 +185,23 @@ function encodeTime(now) {
   const c7 = moOpts[Math.floor(Math.random() * moOpts.length)];
   const c8 = DATE_MAP[dt];
 
-  return ('GIFT-' + c1 + c2 + c3 + c4 + c5 + c6 + c7 + c8).toUpperCase();
+  return ('KBC-' + c1 + c2 + c3 + c4 + c5 + c6 + c7 + c8).toUpperCase();
 }
 
 // ══════════════════════════════════════════════
 //  DECODING
 // ══════════════════════════════════════════════
 function decodeGiftCard(code) {
-  if (!code || code.length !== 13 || !code.startsWith('GIFT-')) return null;
-  const enc = code.substring(5);
+  if (!code) return null;
+  let prefix = '';
+  if (code.startsWith('KBC-') && code.length === 12) {
+    prefix = 'KBC-';
+  } else if (code.startsWith('GIFT-') && code.length === 13) {
+    prefix = 'GIFT-';
+  } else {
+    return null;
+  }
+  const enc = code.substring(prefix.length);
 
   const s1 = CHAR_TO_DIGIT[enc[0]];
   const s2 = CHAR_TO_DIGIT[enc[1]];
@@ -462,7 +470,7 @@ function closeGenerateModal() {
 // ══════════════════════════════════════════════
 async function searchGiftCard() {
   const code = document.getElementById('searchCode').value.trim().toUpperCase();
-  if (!/^GIFT-[A-Z0-9]{8}$/.test(code)) { showToast('Enter a valid code: GIFT-XXXXXXXX', 'error'); return; }
+  if (!/^(KBC|GIFT)-[A-Z0-9]{8}$/.test(code)) { showToast('Enter a valid code: KBC-XXXXXXXX', 'error'); return; }
 
   const btn = document.getElementById('btnSearch');
   btn.disabled = true;
@@ -544,7 +552,7 @@ async function searchGiftCard() {
 
 function resetSearch() {
   document.getElementById('searchResult').classList.remove('show');
-  document.getElementById('searchCode').value = 'GIFT-';
+  document.getElementById('searchCode').value = 'KBC-';
   document.getElementById('searchCode').focus();
 }
 
@@ -674,6 +682,25 @@ function formatCardDate(dateStr) {
     }
   }
   return dateStr;
+}
+
+function formatExcelTime(timeVal) {
+  if (!timeVal) return '';
+  const str = String(timeVal).trim();
+  if (!str) return '';
+
+  if (/^\d{1,2}:\d{2}(:\d{2})?$/.test(str)) {
+    return str.substring(0, 5);
+  }
+
+  const date = new Date(timeVal);
+  if (!isNaN(date.getTime())) {
+    const hr = String(date.getHours()).padStart(2, '0');
+    const min = String(date.getMinutes()).padStart(2, '0');
+    return `${hr}:${min}`;
+  }
+
+  return str;
 }
 
 // ══════════════════════════════════════════════
@@ -824,6 +851,143 @@ async function loadEntries() {
 
 function loadMoreEntries() {
   loadEntries();
+}
+
+async function downloadLedger() {
+  const btn = document.getElementById('btnDownloadLedger');
+  if (!btn) return;
+  
+  const originalHtml = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Downloading…';
+  
+  showToast('Fetching complete spreadsheet data...', 'success');
+  
+  try {
+    let allData = [];
+    let offset = 0;
+    let hasMore = true;
+    
+    // Fetch fresh data in loops
+    while (hasMore) {
+      const resp = await apiCall({ action: 'getAllEntries', offset: offset });
+      if (resp.success) {
+        if (!resp.data || resp.data.length === 0) break;
+        allData = allData.concat(resp.data);
+        offset += resp.data.length;
+        hasMore = resp.hasMore === true || resp.hasMore === 'true';
+      } else {
+        throw new Error(resp.error || 'Fetch failed');
+      }
+    }
+    
+    // Fallback to cache if fetch returned nothing
+    if (allData.length === 0) {
+      const cachedStr = localStorage.getItem('gsheet_cache_data');
+      if (cachedStr) {
+        allData = JSON.parse(cachedStr);
+      }
+    }
+    
+    if (allData.length === 0) {
+      showToast('No entries found to download', 'error');
+      btn.disabled = false;
+      btn.innerHTML = originalHtml;
+      return;
+    }
+    
+    // Sort chronologically (oldest first, so it reads like a standard ledger document)
+    const chronoData = [...allData].reverse();
+    
+    const excelRows = chronoData.map(entry => {
+      const decoded = decodeGiftCard(entry.code);
+      const issueDate = decoded ? decoded.date : '';
+      const issueTime = decoded ? decoded.time : '';
+      const isRedeemed = (entry.redeemStatus === 0 || entry.redeemStatus === '0');
+      return {
+        'Mobile Number': entry.mobile,
+        'Gift Card Code': entry.code,
+        'Issue Date': issueDate,
+        'Issue Time': issueTime,
+        'Message': entry.message,
+        'Generation Amount': entry.amount,
+        'Redeem Status': isRedeemed ? 'Redeemed' : 'Active',
+        'Redeem Date': entry.redeemDate || '',
+        'Redeem Time': formatExcelTime(entry.redeemTime)
+      };
+    });
+    
+    const worksheet = XLSX.utils.json_to_sheet(excelRows);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Gift Cards');
+    
+    // Auto-fit column widths (9 columns)
+    const max_width = [15, 20, 15, 12, 30, 18, 15, 15, 12];
+    worksheet['!cols'] = max_width.map(w => ({ wch: w }));
+    
+    // Generate filename based on current local date (YYYY-MM-DD.xlsx)
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const fileName = `${year}-${month}-${day}.xlsx`;
+    
+    XLSX.writeFile(workbook, fileName);
+    showToast('Download complete!', 'success');
+  } catch (err) {
+    console.error(err);
+    showToast('Network error. Trying cache...', 'error');
+    
+    // Fallback: cached data
+    try {
+      const cachedStr = localStorage.getItem('gsheet_cache_data');
+      if (cachedStr) {
+        const cachedData = JSON.parse(cachedStr);
+        if (cachedData && cachedData.length > 0) {
+          const chronoData = [...cachedData].reverse();
+          const excelRows = chronoData.map(entry => {
+            const decoded = decodeGiftCard(entry.code);
+            const issueDate = decoded ? decoded.date : '';
+            const issueTime = decoded ? decoded.time : '';
+            const isRedeemed = (entry.redeemStatus === 0 || entry.redeemStatus === '0');
+            return {
+              'Mobile Number': entry.mobile,
+              'Gift Card Code': entry.code,
+              'Issue Date': issueDate,
+              'Issue Time': issueTime,
+              'Message': entry.message,
+              'Generation Amount': entry.amount,
+              'Redeem Status': isRedeemed ? 'Redeemed' : 'Active',
+              'Redeem Date': entry.redeemDate || '',
+              'Redeem Time': formatExcelTime(entry.redeemTime)
+            };
+          });
+          const worksheet = XLSX.utils.json_to_sheet(excelRows);
+          const workbook = XLSX.utils.book_new();
+          XLSX.utils.book_append_sheet(workbook, worksheet, 'Gift Cards');
+          worksheet['!cols'] = [15, 20, 15, 12, 30, 18, 15, 15, 12].map(w => ({ wch: w }));
+          
+          const now = new Date();
+          const year = now.getFullYear();
+          const month = String(now.getMonth() + 1).padStart(2, '0');
+          const day = String(now.getDate()).padStart(2, '0');
+          const fileName = `${year}-${month}-${day}.xlsx`;
+          
+          XLSX.writeFile(workbook, fileName);
+          showToast('Downloaded from cache successfully!', 'success');
+        } else {
+          showToast('Download failed. No cached data available.', 'error');
+        }
+      } else {
+        showToast('Download failed. No cached data available.', 'error');
+      }
+    } catch (fallbackErr) {
+      showToast('Download failed', 'error');
+    }
+  }
+  
+  btn.disabled = false;
+  btn.innerHTML = originalHtml;
 }
 
 // ══════════════════════════════════════════════
